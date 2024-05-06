@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">= 3.12"
 
 [project.scripts]
-"tester" = "tester:main"
+"silver-disco" = "silver_disco:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -28,7 +28,7 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/tester"]
+packages = ["src/silver_disco"]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

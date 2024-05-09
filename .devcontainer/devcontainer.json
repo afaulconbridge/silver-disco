@@ -7,6 +7,14 @@
     "runArgs": [
         "--gpus=all"
     ],
+    // not enforced
+    "hostRequirements": {
+        "gpu": true
+    },
+    "capAdd": [
+        "gpu",
+        "video"
+    ],
     "features": {
         "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
         "ghcr.io/dhoeric/features/hadolint:1": {},
@@ -52,9 +60,5 @@
         }
     },
     "postStartCommand": "pre-commit install",
-    "remoteUser": "vscode",
-    // not enforced
-    "hostRequirements": {
-        "gpu": true
-    }
+    "remoteUser": "vscode"
 }

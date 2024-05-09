@@ -8,3 +8,13 @@
 #   with-sources: false
 
 -e file:.
+ffmpeg-python==0.2.0
+    # via silver-disco
+future==1.0.0
+    # via ffmpeg-python
+imutils==0.5.4
+    # via silver-disco
+numpy==1.26.4
+    # via opencv-contrib-python-headless
+opencv-contrib-python-headless==4.9.0.80
+    # via silver-disco

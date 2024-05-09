@@ -12,14 +12,24 @@ cfgv==3.4.0
     # via pre-commit
 distlib==0.3.8
     # via virtualenv
+ffmpeg-python==0.2.0
+    # via silver-disco
 filelock==3.13.3
     # via virtualenv
+future==1.0.0
+    # via ffmpeg-python
 identify==2.5.35
     # via pre-commit
+imutils==0.5.4
+    # via silver-disco
 iniconfig==2.0.0
     # via pytest
 nodeenv==1.8.0
     # via pre-commit
+numpy==1.26.4
+    # via opencv-contrib-python-headless
+opencv-contrib-python-headless==4.9.0.80
+    # via silver-disco
 packaging==24.0
     # via pytest
 platformdirs==4.2.0

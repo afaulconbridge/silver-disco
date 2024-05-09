@@ -8,8 +8,8 @@ ENV PATH="$RYE_HOME/shims:$PATH"
 # hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl
+    ca-certificates \
+    curl
 
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 RUN curl -sSf https://rye-up.com/get | RYE_INSTALL_OPTION="--yes" bash && \
@@ -27,3 +27,8 @@ COPY --from=builder /opt/rye /opt/rye
 ENV RYE_HOME="/opt/rye"
 ENV PATH="$RYE_HOME/shims:$PATH"
 ENV PYTHONUNBUFFERED True
+
+RUN apt-get -y update \
+    && apt-get install --no-install-recommends -y ffmpeg=7:5.1.4-0+deb12u1\
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*

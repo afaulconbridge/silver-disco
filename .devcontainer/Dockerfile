@@ -16,7 +16,7 @@ RUN curl -sSf https://rye-up.com/get | RYE_INSTALL_OPTION="--yes" bash && \
     rye config --set-bool behavior.global-python=true && \
     rye config --set-bool behavior.use-uv=true
 
-COPY ./.python-version ./pyproject.toml ./requirements* ./
+COPY ./.python-version ./pyproject.toml ./requirements* ./README.md ./
 RUN rye pin "$(cat .python-version)" && \
     rye sync
 

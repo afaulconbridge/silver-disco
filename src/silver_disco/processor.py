@@ -54,7 +54,7 @@ class BackgroundSubtractorProcessor(FrameProcessor):
     _background_subtractor: cv2.BackgroundSubtractor | None = None
 
     @property
-    def background_subtractor(self):
+    def background_subtractor(self) -> cv2.BackgroundSubtractor:
         if not self._background_subtractor:
             self._background_subtractor = cv2.createBackgroundSubtractorKNN()
         return self._background_subtractor
@@ -79,8 +79,7 @@ class BackgroundSubtractorProcessor(FrameProcessor):
             frame.background_subtracted, 100, 255, cv2.THRESH_BINARY
         )
 
-        frame = super().handle(frame)
-        return frame
+        return super().handle(frame)
 
 
 class ContourProcessor(FrameProcessor):
@@ -90,22 +89,45 @@ class ContourProcessor(FrameProcessor):
             cv2.drawContours(contours_img, frame.contours, -1, (255, 0, 0))
         return contours_img
 
+    def _filter_contour(
+        self, contour: cv2.typing.MatLike, width: int, height: int
+    ) -> bool:
+        area = cv2.contourArea(contour)
+        # size based on position in frame - smaller on horizon
+        contour_bbox = cv2.boundingRect(contour)
+        contour_centre = (
+            contour_bbox[0] + (contour_bbox[2] / 2),
+            contour_bbox[1] + (contour_bbox[3] / 2),
+        )
+
+        contour_proportion_halfway = abs(
+            (contour_bbox[1] + (contour_bbox[3] / 2)) - (height / 2)
+        ) / (height / 2)
+
+        sizeabs = 0.02
+        sizescale = contour_proportion_halfway * 0.1
+
+        contour_min_size = ((sizescale + sizeabs) * width) * (
+            (sizescale + sizeabs) * height
+        )
+        contour_max_size = (0.90 * width) * (0.90 * height)
+        if area < contour_min_size:
+            return False
+        if area > contour_max_size:
+            return False
+        return True
+
     def handle(self, frame: Frame) -> Frame:
-        frame.contours, hierarchy = cv2.findContours(
+        frame.contours, _ = cv2.findContours(
             frame.background_subtracted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
 
-        # TODO size based on position in frame - smaller on horizon
-        contour_min_size = (0.02 * frame.width) * (0.02 * frame.height)
-        contour_max_size = (0.90 * frame.width) * (0.90 * frame.height)
         frame.contours = [
             contour
             for contour in frame.contours
-            if cv2.contourArea(contour) > contour_min_size
-            and cv2.contourArea(contour) < contour_max_size
+            if self._filter_contour(contour, frame.width, frame.height)
         ]
-        frame = super().handle(frame)
-        return frame
+        return super().handle(frame)
 
 
 class TrackingProcessor(FrameProcessor):
@@ -117,11 +139,13 @@ class TrackingProcessor(FrameProcessor):
         self.trackers = []
         self.tracker_rects = []
 
-    def _find_tracker(self, x: int, y: int) -> cv2.Tracker | None:
+    def _find_tracker(self, bbox: cv2.typing.Rect) -> cv2.Tracker | None:
         for tracker, tracker_rect in zip(
             self.trackers, self.tracker_rects, strict=False
         ):
-            print(f"{x},{y} vs {tracker_rect}")
+            # TODO faster data structure!
+            # TODO based on bbox overlap, not centre containment
+            x, y = bbox[0] + (bbox[2] / 2), bbox[1] + (bbox[3] / 2)
 
             if (
                 x > tracker_rect[0]
@@ -136,7 +160,7 @@ class TrackingProcessor(FrameProcessor):
         i = self.trackers.index(tracker)
         self.tracker_rects[i] = [int(n) for n in rect]
 
-    def _stop_tracker(self, tracker) -> None:
+    def _stop_tracker(self, tracker: cv2.Tracker) -> None:
         i = self.trackers.index(tracker)
         self.tracker_rects.pop(i)
         self.trackers.pop(i)
@@ -156,22 +180,20 @@ class TrackingProcessor(FrameProcessor):
         # find new trackers to add
         for contour in frame.contours:
             bbox = cv2.boundingRect(contour)  # x, y, w, h
-            centre_x, centre_y = bbox[0] + (bbox[2] / 2), bbox[1] + (bbox[3] / 2)
             # has an existing tracker?
-            # TODO faster data structure!
-            # TODO based on bbox overlap, not centre containment
-            if tracker := self._find_tracker(centre_x, centre_y):
+            if tracker := self._find_tracker(bbox):
                 pass
             else:
                 # tracker picked using https://broutonlab.com/blog/opencv-object-tracking/
-                tracker = cv2.legacy.TrackerKCF.create()
-                tracker = cv2.legacy.TrackerMedianFlow.create()
+                # tracker = cv2.TrackerKCF.create()
+                tracker = cv2.TrackerCSRT.create()
+                # tracker = cv2.legacy.TrackerMedianFlow.create()
+                # tracker = cv2.legacy.TrackerBoosting.create()
                 tracker.init(frame.raw, bbox)
                 self.trackers.append(tracker)
                 self.tracker_rects.append(bbox)
 
-        frame = super().handle(frame)
-        return frame
+        return super().handle(frame)
 
     def _frame_to_write(self, frame: Frame) -> cv2.typing.MatLike:
         contours_img = frame.raw.copy()

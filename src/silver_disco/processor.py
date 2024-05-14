@@ -60,14 +60,8 @@ class FrameProcessor:
         return frame
 
 
-class BackgroundSubtractorKNNProcessor(FrameProcessor):
+class BackgroundSubtractorCV2Processor(FrameProcessor):
     _background_subtractor: cv2.BackgroundSubtractor | None = None
-
-    @property
-    def background_subtractor(self) -> cv2.BackgroundSubtractor:
-        if not self._background_subtractor:
-            self._background_subtractor = cv2.createBackgroundSubtractorKNN()
-        return self._background_subtractor
 
     def _frame_to_write(self, frame: Frame) -> cv2.typing.MatLike:
         return cv2.cvtColor(frame.background_subtracted, cv2.COLOR_GRAY2BGR)
@@ -90,6 +84,22 @@ class BackgroundSubtractorKNNProcessor(FrameProcessor):
         )
 
         return super().handle(frame)
+
+
+class BackgroundSubtractorKNNProcessor(BackgroundSubtractorCV2Processor):
+    @property
+    def background_subtractor(self) -> cv2.BackgroundSubtractor:
+        if not self._background_subtractor:
+            self._background_subtractor = cv2.createBackgroundSubtractorKNN()
+        return self._background_subtractor
+
+
+class BackgroundSubtractorMOG2Processor(BackgroundSubtractorCV2Processor):
+    @property
+    def background_subtractor(self) -> cv2.BackgroundSubtractor:
+        if not self._background_subtractor:
+            self._background_subtractor = cv2.createBackgroundSubtractorMOG2()
+        return self._background_subtractor
 
 
 class ContourProcessor(FrameProcessor):

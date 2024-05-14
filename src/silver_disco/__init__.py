@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from silver_disco.frame import FileFrameSourceFFMPEG, FrameSource
 from silver_disco.processor import (
     BackgroundSubtractorKNNProcessor,
+    BackgroundSubtractorMOG2Processor,
     ContourProcessor,
     FrameProcessor,
     TrackingProcessor,
@@ -41,6 +42,7 @@ def main() -> int:
     processors: list[FrameProcessor] = [
         FrameProcessor("out_raw.mp4"),
         BackgroundSubtractorKNNProcessor("out_background_subtracted.mp4"),
+        # BackgroundSubtractorMOG2Processor("out_background_subtracted.mp4"),
         ContourProcessor("out_contours.mp4"),
         TrackingProcessor("out_tracking.mp4"),
     ]

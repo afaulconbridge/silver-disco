@@ -1,3 +1,4 @@
+import time
 from subprocess import Popen
 
 import cv2
@@ -10,6 +11,7 @@ from silver_disco.frame import Frame
 class FrameProcessor:
     output_filename: str
     output_writer: Popen | None = None
+    cumulative_time: int = 0
 
     def __init__(self, output_filename: str = ""):
         self.output_filename = output_filename
@@ -26,7 +28,7 @@ class FrameProcessor:
     def _frame_to_write(self, frame: Frame) -> cv2.typing.MatLike:
         return frame.raw
 
-    def handle(self, frame: Frame) -> Frame:
+    def write_frame(self, frame: Frame) -> None:
         if self.output_filename:
             if not self.output_writer:
                 self.output_writer = (
@@ -47,10 +49,18 @@ class FrameProcessor:
                 self._frame_to_write(frame).astype(np.uint8).tobytes()
             )
 
+    def handle_time(self, frame: Frame) -> Frame:
+        start = time.time()
+        frame_output = self.handle(frame)
+        end = time.time()
+        self.cumulative_time += end - start
+        return frame_output
+
+    def handle(self, frame: Frame) -> Frame:
         return frame
 
 
-class BackgroundSubtractorProcessor(FrameProcessor):
+class BackgroundSubtractorKNNProcessor(FrameProcessor):
     _background_subtractor: cv2.BackgroundSubtractor | None = None
 
     @property
@@ -68,7 +78,7 @@ class BackgroundSubtractorProcessor(FrameProcessor):
 
         # frigate uses bluring and thresholding
         # opencv tutorial uses morphology kernels
-        kernel = np.ones((5, 5), np.uint8)
+        kernel = np.ones((7, 7), np.uint8)
         frame.background_subtracted = cv2.morphologyEx(
             frame.background_subtracted, cv2.MORPH_OPEN, kernel
         )
@@ -100,12 +110,13 @@ class ContourProcessor(FrameProcessor):
             contour_bbox[1] + (contour_bbox[3] / 2),
         )
 
+        # 0 at midline (horizon), 1 at edge
         contour_proportion_halfway = abs(
             (contour_bbox[1] + (contour_bbox[3] / 2)) - (height / 2)
         ) / (height / 2)
 
         sizeabs = 0.02
-        sizescale = contour_proportion_halfway * 0.1
+        sizescale = contour_proportion_halfway * 0.25
 
         contour_min_size = ((sizescale + sizeabs) * width) * (
             (sizescale + sizeabs) * height
@@ -132,37 +143,43 @@ class ContourProcessor(FrameProcessor):
 
 class TrackingProcessor(FrameProcessor):
     trackers: list[cv2.Tracker]
-    tracker_rects: list[cv2.Tracker]
+    trackers_rect: list[cv2.Tracker]
 
     def __init__(self, output_filename: str = ""):
         super().__init__(output_filename)
         self.trackers = []
-        self.tracker_rects = []
+        self.trackers_rect = []
+
+    @staticmethod
+    def _get_overlap(bbox1: cv2.typing.Rect, bbox2: cv2.typing.Rect) -> float:
+        # order l->r,b->t
+        if (bbox1[0], bbox1[1]) > (bbox2[0], bbox2[1]):
+            bbox2, bbox1 = bbox1, bbox2
+        inner_left = max(bbox1[0], bbox2[0])
+        inner_right = max(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2])
+        inner_bottom = max(bbox1[1], bbox2[1])
+        inner_top = max(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3])
+        inner_area = (inner_right - inner_left) * (inner_top - inner_bottom)
+        total_area = (bbox1[2] * bbox1[3]) + (bbox2[2] * bbox2[3]) - inner_area
+
+        return inner_area / total_area
 
     def _find_tracker(self, bbox: cv2.typing.Rect) -> cv2.Tracker | None:
+        # TODO faster data structure!
         for tracker, tracker_rect in zip(
-            self.trackers, self.tracker_rects, strict=False
+            self.trackers, self.trackers_rect, strict=False
         ):
-            # TODO faster data structure!
-            # TODO based on bbox overlap, not centre containment
-            x, y = bbox[0] + (bbox[2] / 2), bbox[1] + (bbox[3] / 2)
-
-            if (
-                x > tracker_rect[0]
-                and x < tracker_rect[0] + tracker_rect[2]
-                and y > tracker_rect[1]
-                and y < tracker_rect[1] + tracker_rect[3]
-            ):
+            if self._get_overlap(bbox, tracker_rect) > 0.01:
                 return tracker
         return None
 
     def _update_tracker_rect(self, tracker: cv2.Tracker, rect: cv2.typing.Rect) -> None:
         i = self.trackers.index(tracker)
-        self.tracker_rects[i] = [int(n) for n in rect]
+        self.trackers_rect[i] = [int(n) for n in rect]
 
     def _stop_tracker(self, tracker: cv2.Tracker) -> None:
         i = self.trackers.index(tracker)
-        self.tracker_rects.pop(i)
+        self.trackers_rect.pop(i)
         self.trackers.pop(i)
 
     def handle(self, frame: Frame) -> Frame:
@@ -191,13 +208,13 @@ class TrackingProcessor(FrameProcessor):
                 # tracker = cv2.legacy.TrackerBoosting.create()
                 tracker.init(frame.raw, bbox)
                 self.trackers.append(tracker)
-                self.tracker_rects.append(bbox)
+                self.trackers_rect.append(bbox)
 
         return super().handle(frame)
 
     def _frame_to_write(self, frame: Frame) -> cv2.typing.MatLike:
         contours_img = frame.raw.copy()
-        for tracker_rect in self.tracker_rects:
+        for tracker_rect in self.trackers_rect:
             cv2.rectangle(
                 contours_img,
                 (int(tracker_rect[0]), int(tracker_rect[1])),

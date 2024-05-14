@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass, field
 from subprocess import Popen
 
@@ -59,6 +60,7 @@ class FileFrameSourceFFMPEG(FrameSource):
     reader: Popen | None = None
     width: int | None = None
     height: int | None = None
+    cumulative_time: int = 0
 
     def __init__(self, filename: str):
         super()
@@ -74,6 +76,8 @@ class FileFrameSourceFFMPEG(FrameSource):
         self.height = int(video_stream["height"])
 
     def __next__(self) -> Frame:
+        start = time.time()
+
         if not self.reader:
             self._detect_width_height()
             self.reader = (
@@ -94,4 +98,9 @@ class FileFrameSourceFFMPEG(FrameSource):
         in_frame = np.frombuffer(in_bytes, np.uint8).reshape(
             [self.height, self.width, 3]
         )
-        return Frame(raw=in_frame)
+        frame = Frame(raw=in_frame)
+
+        end = time.time()
+        self.cumulative_time += end - start
+
+        return frame

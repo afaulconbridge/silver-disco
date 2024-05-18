@@ -13,6 +13,7 @@ class Frame:
     background: cv2.typing.MatLike | None = None
     background_subtracted: cv2.typing.MatLike | None = None
     contours: list[cv2.typing.MatLike] = field(default_factory=list)
+    tracked: dict[int, tuple[int, int, int, int]] = field(default_factory=dict)
 
     @property
     def width(self) -> float:
@@ -86,6 +87,8 @@ class FileFrameSourceFFMPEG(FrameSource):
                 .run_async(pipe_stdout=True, quiet=True)
             )
 
+        if self.reader.poll() is not None:
+            raise StopIteration
         in_bytes = self.reader.stdout.read(self.width * self.height * 3)
 
         if not in_bytes:
@@ -104,3 +107,10 @@ class FileFrameSourceFFMPEG(FrameSource):
         self.cumulative_time += end - start
 
         return frame
+
+
+@dataclass
+class FrameStats:
+    motion: float
+    contours: list[tuple[int, int, int, int]]
+    trackers: dict[str, tuple[int, int, int, int]]

@@ -12,8 +12,7 @@
         "gpu": true
     },
     "capAdd": [
-        "gpu",
-        "video"
+        "ALL"
     ],
     "features": {
         "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},

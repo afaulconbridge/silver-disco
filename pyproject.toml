@@ -2,13 +2,12 @@
 name = "silver-disco"
 version = "0.1.0"
 description = "Add your description here"
-authors = [
-    { name = "afaulconbridge" }
-]
+authors = [{ name = "afaulconbridge" }]
 dependencies = [
     "imutils>=0.5.4",
     "ffmpeg-python>=0.2.0",
     "opencv-contrib-python-headless>=4.9.0.80",
+    "matplotlib>=3.9.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
@@ -22,11 +21,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = [
-    "pytest>=8.1.1",
-    "pre-commit>=3.7.0",
-    "ruff>=0.3.5",
-]
+dev-dependencies = ["pytest>=8.1.1", "pre-commit>=3.7.0", "ruff>=0.3.5"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -73,18 +68,36 @@ indent-width = 4
 target-version = "py312"
 
 [tool.ruff.lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["ALL"]
 ignore = [
-    "COM812", "COM819",
-    "D100", "D101","D102","D103","D104","D105", "D107","D203", "D213", "D300",
-    "E111", "E114", "E117",
-    "ISC001", "ISC002",
-    "Q000", "Q001", "Q002", "Q003",
+    "COM812",
+    "COM819",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+    "D300",
+    "E111",
+    "E114",
+    "E117",
+    "ISC001",
+    "ISC002",
+    "S311",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
     "W191",
-    "ANN101","ANN204"
+    "ANN101",
+    "ANN204",
 ]
+select = ["ALL"]
 
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []
